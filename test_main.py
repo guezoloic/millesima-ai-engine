@@ -1,4 +1,6 @@
 from main import *
 
+scraper = Scraper()
+
 def test_soup():
-    assert getsoup("https://example.com").find('h1').text == "Example Domain"
+    assert scraper.getsoup().find('h1').text[3:12] == "MILLESIMA"
