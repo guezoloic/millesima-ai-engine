@@ -1,8 +1,34 @@
 from sys import stderr
-from typing import Any, cast
+from typing import cast
 from requests import Response, Session
 from bs4 import BeautifulSoup, Tag
 from json import JSONDecodeError, loads
+
+
+class ScraperData:
+    def __init__(self, data: dict[str, object]) -> None:
+        if not data:
+            raise ValueError("Données insuffisantes pour créer un ScraperData.")
+        self._data: dict[str, object] = data
+
+    def _getattributes(self) -> dict[str, object] | None:
+        current_data: object = self._data.get("attributes")
+        if isinstance(current_data, dict):
+            return cast(dict[str, object], current_data)
+        return None
+
+    def appellation(self) -> str | None:
+        current_value: dict[str, object] | None = self._getattributes()
+        if current_value is not None:
+            app_dict: dict[str, object] = cast(
+                dict[str, object], current_value.get("appellation")
+            )
+            if app_dict:
+                return cast(str, app_dict.get("value"))
+        return None
+
+    def getdata(self) -> dict[str, object]:
+        return self._data
 
 
 class Scraper:
@@ -138,29 +164,3 @@ class Scraper:
             except (JSONDecodeError, ValueError) as e:
                 print(f"Erreur lors de l'extraction JSON : {e}", file=stderr)
         return ScraperData({})
-
-
-class ScraperData:
-    def __init__(self, data: dict[str, object]) -> None:
-        if not data:
-            raise ValueError("Données insuffisantes pour créer un ScraperData.")
-        self._data: dict[str, object] = data
-
-    def _getattributes(self) -> dict[str, object] | None:
-        current_data: object = self._data.get("attributes")
-        if isinstance(current_data, dict):
-            return cast(dict[str, object], current_data)
-        return None
-
-    def appellation(self) -> str | None:
-        current_value: dict[str, object] | None = self._getattributes()
-        if current_value is not None:
-            app_dict: dict[str, object] = cast(
-                dict[str, object], current_value.get("appellation")
-            )
-            if app_dict:
-                return cast(str, app_dict.get("value"))
-        return None
-
-    def getdata(self) -> dict[str, object]:
-        return self._data
