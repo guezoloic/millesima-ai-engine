@@ -4,7 +4,6 @@ from requests import Response, Session
 from bs4 import BeautifulSoup, Tag
 from json import JSONDecodeError, loads
 
-
 class ScraperData:
     def __init__(self, data: dict[str, object]) -> None:
         if not data:
@@ -27,9 +26,24 @@ class ScraperData:
                 return cast(str, app_dict.get("value"))
         return None
 
+    def _getvin(self, name: str) -> str | None:
+        current_value: dict[str, object] | None = self._getattributes()
+        if current_value is not None:
+            app_dict: dict[str, object] = cast(
+                dict[str, object], current_value.get(name)
+            )
+            if app_dict:
+                return cast(str, app_dict.get("valueId"))
+        return None
+
+    def robinson(self) -> str | None:
+        return self._getvin("note_jr")
+
+    def suckling(self) -> str | None:
+        return self._getvin("note_js")
+
     def getdata(self) -> dict[str, object]:
         return self._data
-
 
 class Scraper:
     """
@@ -164,3 +178,5 @@ class Scraper:
             except (JSONDecodeError, ValueError) as e:
                 print(f"Erreur lors de l'extraction JSON : {e}", file=stderr)
         return ScraperData({})
+
+print(Scraper().getjsondata("/chateau-gloria-2016.html").suckling())
