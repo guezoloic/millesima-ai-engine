@@ -2,7 +2,9 @@ from sys import stderr
 from typing import cast
 from requests import Response, Session
 from bs4 import BeautifulSoup, Tag
+from collections import OrderedDict
 from json import JSONDecodeError, loads
+
 
 class ScraperData:
     def __init__(self, data: dict[str, object]) -> None:
@@ -33,7 +35,12 @@ class ScraperData:
                 dict[str, object], current_value.get(name)
             )
             if app_dict:
-                return cast(str, app_dict.get("valueId")).rstrip("+")
+                val: list[str] = (
+                    cast(str, app_dict.get("valueId")).rstrip("+").split("-")
+                )
+                if len(val) > 1:
+                    val[0] = str((int(val[0]) + int(val[1])) / 2)
+                return val[0]
         return None
 
     def parker(self) -> str | None:
@@ -47,6 +54,7 @@ class ScraperData:
 
     def getdata(self) -> dict[str, object]:
         return self._data
+
 
 class Scraper:
     """
@@ -64,8 +72,10 @@ class Scraper:
         # TCP et d'avoir toujours une connexion constante avec le server
         self._session: Session = Session()
         # Système de cache pour éviter de solliciter le serveur inutilement
-        self._latest_request: tuple[(str, Response | None)] = ("", None)
-        self._latest_soup: tuple[(str, BeautifulSoup | None)] = ("", None)
+        self._latest_request: tuple[(str, Response)] | None = None
+        self._latest_soups: OrderedDict[str, BeautifulSoup] = OrderedDict[
+            str, BeautifulSoup
+        ]()
 
     def _request(self, subdir: str) -> Response:
         """
@@ -85,12 +95,14 @@ class Scraper:
         response.raise_for_status()
         return response
 
-    def getresponse(self, subdir: str = "") -> Response:
+    def getresponse(self, subdir: str = "", use_cache: bool = True) -> Response:
         """
         Récupère la réponse d'une page, en utilisant le cache si possible.
 
         Args:
             subdir (str, optional): Le chemin de la page.
+            use_cache (bool, optional): Utilise la donnée deja sauvegarder ou
+                                    écrase la donnée utilisé avec la nouvelle
 
         Returns:
             Response: L'objet réponse (cache ou nouvelle requête).
@@ -98,16 +110,24 @@ class Scraper:
         Raise:
             HTTPError: Si le serveur renvoie un code d'erreur (4xx, 5xx).
         """
-        rq_subdir, rq_response = self._latest_request
 
-        if rq_response is not None and subdir == rq_subdir:
-            return rq_response
+        # si dans le cache, latest_request existe
+        if use_cache and self._latest_request is not None:
+            rq_subdir, rq_response = self._latest_request
+
+            # si c'est la meme requete et que use_cache est true,
+            # on renvoie celle enregistrer
+            if subdir == rq_subdir:
+                return rq_response
 
         request: Response = self._request(subdir)
-        self._latest_request = (subdir, request)
+        # on recrée la structure pour le systeme de cache si activer
+        if use_cache:
+            self._latest_request = (subdir, request)
+
         return request
 
-    def getsoup(self, subdir: str = "") -> BeautifulSoup:
+    def getsoup(self, subdir: str = "", use_cache: bool = True) -> BeautifulSoup:
         """
         Récupère le contenu HTML d'une page et le transforme en objet BeautifulSoup.
 
@@ -120,16 +140,19 @@ class Scraper:
         Raise:
             HTTPError: Si le serveur renvoie un code d'erreur (4xx, 5xx).
         """
-        rq_subdir, rq_soup = self._latest_soup
 
-        if rq_soup is not None and subdir == rq_subdir:
-            return rq_soup
+        if use_cache and subdir in self._latest_soups:
+            return self._latest_soups[subdir]
 
-        soup: BeautifulSoup = BeautifulSoup(
-            markup=self.getresponse(subdir).text, features="html.parser"
-        )
+        markup: str = self.getresponse(subdir).text
+        soup: BeautifulSoup = BeautifulSoup(markup, features="html.parser")
 
-        self._latest_soup = (subdir, soup)
+        if use_cache:
+            self._latest_soups[subdir] = soup
+
+            if len(self._latest_soups) > 10:
+                _ = self._latest_soups.popitem(last=False)
+
         return soup
 
     def getjsondata(self, subdir: str = "", id: str = "__NEXT_DATA__") -> ScraperData:
@@ -182,7 +205,5 @@ class Scraper:
                 print(f"Erreur lors de l'extraction JSON : {e}", file=stderr)
         return ScraperData({})
 
-# file = Scraper().getjsondata("/chateau-gloria-2016.html")
-# print("parker:   ", file.parker())
-# print("robinson: ", file.robinson())
-# print("suckling: ", file.suckling())
+
+# print(Scraper().getjsondata("bordeaux.html?page=1").getdata())

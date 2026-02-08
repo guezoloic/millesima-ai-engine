@@ -41,7 +41,7 @@ def mock_site():
                                                 "name": "En promotion",
                                                 "value": "Non",
                                                 "sequence": 80,
-                                                "displayable": "false",
+                                                "displayable": "False",
                                                 "type": "CHECKBOX",
                                                 "isSpirit": False,
                                             },
@@ -72,6 +72,24 @@ def mock_site():
                                         "url": "sforzato-di-valtellina.html",
                                         "isSpirit": False,
                                         "groupIdentifier": "appellation_433",
+                                    },
+                                    "note_rp": {
+                                        "valueId": "91",
+                                        "name": "Parker",
+                                        "value": "91",
+                                        "isSpirit": False,
+                                    },
+                                    "note_jr": {
+                                        "valueId": "17",
+                                        "name": "J. Robinson",
+                                        "value": "17",
+                                        "isSpirit": False,
+                                    },
+                                    "note_js": {
+                                        "valueId": "93-94",
+                                        "name": "J. Suckling",
+                                        "value": "93-94",
+                                        "isSpirit": False
                                     },
                                 },
                             }
@@ -123,3 +141,11 @@ def test_appellation(scraper: Scraper):
         "nino-negri-5-stelle-sfursat-2022.html"
     )
     assert appellation.appellation() == "Sforzato di Valtellina"
+
+def test_critiques(scraper: Scraper):
+    critiques: ScraperData = scraper.getjsondata(
+        "nino-negri-5-stelle-sfursat-2022.html"
+    )
+    assert critiques.parker() == "91"
+    assert critiques.robinson() == "17"
+    assert critiques.suckling() == "93.5"
