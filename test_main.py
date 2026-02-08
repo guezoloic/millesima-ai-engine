@@ -122,7 +122,7 @@ def scraper() -> Scraper:
 
 
 def test_soup(scraper: Scraper):
-    h1: Tag | None = scraper.getsoup().find("h1")
+    h1: Tag | None = scraper.getsoup("").find("h1")
 
     assert isinstance(h1, Tag)
     assert h1.text == "MILLESIMA"

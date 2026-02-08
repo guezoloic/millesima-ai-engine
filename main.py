@@ -1,47 +1,68 @@
-from sys import stderr
 from typing import cast
 from requests import Response, Session
 from bs4 import BeautifulSoup, Tag
 from collections import OrderedDict
-from json import JSONDecodeError, loads
+from json import loads
 
 
-class ScraperData:
+class _ScraperData:
     def __init__(self, data: dict[str, object]) -> None:
-        if not data:
-            raise ValueError("Données insuffisantes pour créer un ScraperData.")
         self._data: dict[str, object] = data
 
-    def _getattributes(self) -> dict[str, object] | None:
-        current_data: object = self._data.get("attributes")
-        if isinstance(current_data, dict):
-            return cast(dict[str, object], current_data)
-        return None
+    def _getcontent(self) -> dict[str, object]:
+        """_summary_
 
-    def appellation(self) -> str | None:
-        current_value: dict[str, object] | None = self._getattributes()
-        if current_value is not None:
-            app_dict: dict[str, object] = cast(
-                dict[str, object], current_value.get("appellation")
-            )
-            if app_dict:
-                return cast(str, app_dict.get("value"))
-        return None
+        Returns:
+            dict[str, object]: _description_
+        """
+        current_data: dict[str, object] = self._data
+        for key in ["initialReduxState", "product", "content"]:
+            current_data = cast(dict[str, object], current_data[key])
+        return current_data
+
+    def _getattributes(self) -> dict[str, object]:
+        """_summary_
+
+        Returns:
+            dict[str, object]: _description_
+        """
+        current_data: object = self._getcontent()["attributes"]
+        return cast(dict[str, object], current_data)
+
+    def appellation(self) -> str:
+        """_summary_
+
+        Returns:
+            str: _description_
+        """
+        current_value: dict[str, object] = self._getattributes()
+        app_dict: dict[str, object] = cast(
+            dict[str, object], current_value["appellation"]
+        )
+        return cast(str, app_dict["value"])
 
     def _getvin(self, name: str) -> str | None:
-        current_value: dict[str, object] | None = self._getattributes()
-        if current_value is not None:
-            app_dict: dict[str, object] = cast(
-                dict[str, object], current_value.get(name)
-            )
-            if app_dict:
-                val: list[str] = (
-                    cast(str, app_dict.get("valueId")).rstrip("+").split("-")
-                )
-                if len(val) > 1:
-                    val[0] = str((int(val[0]) + int(val[1])) / 2)
-                return val[0]
-        return None
+        """_summary_
+
+        Args:
+            name (str): _description_
+
+        Returns:
+            str | None: _description_
+        """
+        current_value: dict[str, object] = self._getattributes()
+        app_dict: dict[str, object] | None = cast(
+            dict[str, object] | None, current_value.get(name)
+        )
+
+        if app_dict is None:
+            return None
+
+        val: list[str] = cast(str, app_dict.get("attributes")).rstrip("+").split("-")
+        # dans le cas où 93-94 -> [93, 94] -> 93.5
+        if len(val) > 1:
+            val[0] = str((int(val[0]) + int(val[1])) / 2)
+        return val[0]
 
     def parker(self) -> str | None:
         return self._getvin("note_rp")
@@ -127,7 +148,7 @@ class Scraper:
 
         return request
 
-    def getsoup(self, subdir: str = "", use_cache: bool = True) -> BeautifulSoup:
+    def getsoup(self, subdir: str, use_cache: bool = True) -> BeautifulSoup:
         """
         Récupère le contenu HTML d'une page et le transforme en objet BeautifulSoup.
 
@@ -155,14 +176,14 @@ class Scraper:
 
         return soup
 
-    def getjsondata(self, subdir: str = "", id: str = "__NEXT_DATA__") -> ScraperData:
+    def getjsondata(self, subdir: str, id: str = "__NEXT_DATA__") -> _ScraperData:
         """
         Extrait les données JSON contenues dans la balise __NEXT_DATA__ du site.
         Beaucoup de sites modernes (Next.js) stockent leur état initial dans
         une balise <script> pour l'hydratation côté client.
 
         Args:
-            subdir (str, optional): Le chemin de la page.
+            subdir (str): Le chemin de la page.
             id (str, optional): L'identifiant de la balise script (par défaut __NEXT_DATA__).
 
         Raises:
@@ -178,32 +199,17 @@ class Scraper:
         soup: BeautifulSoup = self.getsoup(subdir)
         script: Tag | None = soup.find("script", id=id)
 
-        if isinstance(script, Tag) and script.string:
-            try:
-                current_data: object = loads(script.string)
-                # tout le chemin à parcourir pour arriver au données
-                # (plein d'information inutile)
-                keys: list[str] = [
-                    "props",
-                    "pageProps",
-                    "initialReduxState",
-                    "product",
-                    "content",
-                ]
-                for key in keys:
-                    # si current_data est bien un dictionnaire et que la clé
-                    # est bien dedans
-                    if isinstance(current_data, dict) and key in current_data:
-                        current_data: object = current_data[key]
-                    else:
-                        raise ValueError(f"Clé manquante dans le JSON : {key}")
+        if script is None or not script.string:
+            raise ValueError(f"le script id={id} est introuvable")
 
-                if isinstance(current_data, dict):
-                    return ScraperData(data=cast(dict[str, object], current_data))
+        current_data: object = cast(object, loads(script.string))
 
-            except (JSONDecodeError, ValueError) as e:
-                print(f"Erreur lors de l'extraction JSON : {e}", file=stderr)
-        return ScraperData({})
+        for key in ["props", "pageProps"]:
+            if isinstance(current_data, dict) and key in current_data:
+                current_data = cast(object, current_data[key])
+                continue
+            raise ValueError(f"Clé manquante dans le JSON : {key}")
 
+        return _ScraperData(cast(dict[str, object], current_data))
 
 # print(Scraper().getjsondata("bordeaux.html?page=1").getdata())
