@@ -94,6 +94,18 @@ def mock_site():
                                                 "type": "CHECKBOX",
                                                 "isSpirit": False,
                                             },
+                                            "equivbtl": {
+                                                "valueId": "1",
+                                                "name": "equivbtl",
+                                                "value": "1",
+                                                "isSpirit": False,
+                                            },
+                                            "nbunit": {
+                                                "valueId": "6",
+                                                "name": "nbunit",
+                                                "value": "6",
+                                                "isSpirit": False,
+                                            },
                                         },
                                         "stock": 12,
                                         "availability": "2026-02-05",
@@ -105,18 +117,6 @@ def mock_site():
                                     }
                                 ],
                                 "attributes": {
-                                    "equivbtl": {
-                                        "valueId": "1",
-                                        "name": "equivbtl",
-                                        "value": "1",
-                                        "isSpirit": False,
-                                    },
-                                    "nbunit": {
-                                        "valueId": "6",
-                                        "name": "nbunit",
-                                        "value": "6",
-                                        "isSpirit": False,
-                                    },
                                     "appellation": {
                                         "valueId": "433",
                                         "name": "Appellation",
@@ -224,3 +224,19 @@ def test_critiques(scraper: Scraper):
     assert contenu.robinson() == "17"
     assert contenu.suckling() == "93.5"
     assert contenu._getcritiques("test_ts") is None
+
+def test_prix(scraper: Scraper):
+    vide = scraper.getjsondata("")
+    poubelle = scraper.getjsondata("poubelle")
+    contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
+
+    # Cas vide : items == [] -> on ne peut pas calculer -> ValueError
+    with pytest.raises(ValueError):
+        _ = vide.prix()
+
+    # Cas poubelle : JSON incomplet -> _getcontent() None -> ValueError
+    with pytest.raises(ValueError):
+        _ = poubelle.prix()
+
+    assert contenu.prix() == 65.0
+
