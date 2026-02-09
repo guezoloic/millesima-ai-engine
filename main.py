@@ -5,6 +5,32 @@ from bs4 import BeautifulSoup, Tag
 from json import JSONDecodeError, loads
 
 
+class ScraperData:
+    def __init__(self, data: dict[str, object]) -> None:
+        if not data:
+            raise ValueError("Données insuffisantes pour créer un ScraperData.")
+        self._data: dict[str, object] = data
+
+    def _getattributes(self) -> dict[str, object] | None:
+        current_data: object = self._data.get("attributes")
+        if isinstance(current_data, dict):
+            return cast(dict[str, object], current_data)
+        return None
+
+    def appellation(self) -> str | None:
+        current_value: dict[str, object] | None = self._getattributes()
+        if current_value is not None:
+            app_dict: dict[str, object] = cast(
+                dict[str, object], current_value.get("appellation")
+            )
+            if app_dict:
+                return cast(str, app_dict.get("value"))
+        return None
+
+    def getdata(self) -> dict[str, object]:
+        return self._data
+
+
 class Scraper:
     """
     Scraper est une classe qui permet de gerer
@@ -22,6 +48,7 @@ class Scraper:
         self._session: Session = Session()
         # Système de cache pour éviter de solliciter le serveur inutilement
         self._latest_request: tuple[(str, Response | None)] = ("", None)
+        self._latest_soup: tuple[(str, BeautifulSoup | None)] = ("", None)
 
     def _request(self, subdir: str) -> Response:
         """
@@ -56,12 +83,12 @@ class Scraper:
         """
         rq_subdir, rq_response = self._latest_request
 
-        if rq_response is None or subdir != rq_subdir:
-            request: Response = self._request(subdir)
-            self._latest_request = (subdir, request)
-            return request
+        if rq_response is not None and subdir == rq_subdir:
+            return rq_response
 
-        return rq_response
+        request: Response = self._request(subdir)
+        self._latest_request = (subdir, request)
+        return request
 
     def getsoup(self, subdir: str = "") -> BeautifulSoup:
         """
@@ -76,12 +103,19 @@ class Scraper:
         Raise:
             HTTPError: Si le serveur renvoie un code d'erreur (4xx, 5xx).
         """
-        markup: str = self.getresponse(subdir).text
-        return BeautifulSoup(markup, features="html.parser")
+        rq_subdir, rq_soup = self._latest_soup
 
-    def getjsondata(
-        self, subdir: str = "", id: str = "__NEXT_DATA__"
-    ) -> dict[str, object]:
+        if rq_soup is not None and subdir == rq_subdir:
+            return rq_soup
+
+        soup: BeautifulSoup = BeautifulSoup(
+            markup=self.getresponse(subdir).text, features="html.parser"
+        )
+
+        self._latest_soup = (subdir, soup)
+        return soup
+
+    def getjsondata(self, subdir: str = "", id: str = "__NEXT_DATA__") -> ScraperData:
         """
         Extrait les données JSON contenues dans la balise __NEXT_DATA__ du site.
         Beaucoup de sites modernes (Next.js) stockent leur état initial dans
@@ -94,7 +128,7 @@ class Scraper:
         Raises:
             HTTPError: Soulevée par `getresponse` si le serveur renvoie un code d'erreur (4xx, 5xx).
             JSONDecodeError: Soulevée par `loads` si le contenu de la balise n'est pas un JSON valide.
-            ValueError: Soulevée manuellement si l'une des clés attendues (props, pageProps, etc.) 
+            ValueError: Soulevée manuellement si l'une des clés attendues (props, pageProps, etc.)
                         est absente de la structure JSON.
 
         Returns:
@@ -120,13 +154,13 @@ class Scraper:
                     # si current_data est bien un dictionnaire et que la clé
                     # est bien dedans
                     if isinstance(current_data, dict) and key in current_data:
-                        current_data = current_data[key]
+                        current_data: object = current_data[key]
                     else:
                         raise ValueError(f"Clé manquante dans le JSON : {key}")
 
                 if isinstance(current_data, dict):
-                    return cast(dict[str, object], current_data)
+                    return ScraperData(data=cast(dict[str, object], current_data))
 
             except (JSONDecodeError, ValueError) as e:
                 print(f"Erreur lors de l'extraction JSON : {e}", file=stderr)
-        return {}
+        return ScraperData({})
