@@ -65,6 +65,18 @@ def mock_site():
                                     }
                                 ],
                                 "attributes": {
+                                    "equivbtl": {
+                                        "valueId": "1",
+                                        "name": "equivbtl",
+                                        "value": "1",
+                                        "isSpirit": False,
+                                    },
+                                    "nbunit": {
+                                        "valueId": "6",
+                                        "name": "nbunit",
+                                        "value": "6",
+                                        "isSpirit": False,
+                                    },
                                     "appellation": {
                                         "valueId": "433",
                                         "name": "Appellation",
