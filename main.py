@@ -211,5 +211,3 @@ class Scraper:
             raise ValueError(f"Clé manquante dans le JSON : {key}")
 
         return _ScraperData(cast(dict[str, object], current_data))
-
-# print(Scraper().getjsondata("bordeaux.html?page=1").getdata())

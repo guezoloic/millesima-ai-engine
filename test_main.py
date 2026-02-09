@@ -89,7 +89,7 @@ def mock_site():
                                         "valueId": "93-94",
                                         "name": "J. Suckling",
                                         "value": "93-94",
-                                        "isSpirit": False
+                                        "isSpirit": False,
                                     },
                                 },
                             }
@@ -121,31 +121,22 @@ def scraper() -> Scraper:
     return Scraper()
 
 
+# EXO1
 def test_soup(scraper: Scraper):
     h1: Tag | None = scraper.getsoup("").find("h1")
-
     assert isinstance(h1, Tag)
     assert h1.text == "MILLESIMA"
 
 
-# def test_getProductName(scraper: Scraper):
-#     jsondata = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
-#     assert jsondata["productName"] == "Nino Negri : 5 Stelle Sfursat 2022"
-#     assert isinstance(jsondata["items"], list)
-#     assert len(jsondata["items"]) > 0
-#     assert jsondata["items"][0]["offerPrice"] == 390
-
-
+# EXO3
 def test_appellation(scraper: Scraper):
-    appellation  = scraper.getjsondata(
-        "nino-negri-5-stelle-sfursat-2022.html"
-    )
+    appellation = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
     assert appellation.appellation() == "Sforzato di Valtellina"
 
+
+# EXO4-5
 def test_critiques(scraper: Scraper):
-    critiques  = scraper.getjsondata(
-        "nino-negri-5-stelle-sfursat-2022.html"
-    )
+    critiques = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
     assert critiques.parker() == "91"
     assert critiques.robinson() == "17"
     assert critiques.suckling() == "93.5"
