@@ -9,7 +9,7 @@ class _ScraperData:
     def __init__(self, data: dict[str, object]) -> None:
         self._data: dict[str, object] = data
 
-    def _getcontent(self) -> dict[str, object]:
+    def _getcontent(self) -> dict[str, object] | None:
         """_summary_
 
         Returns:
@@ -17,27 +17,37 @@ class _ScraperData:
         """
         current_data: dict[str, object] = self._data
         for key in ["initialReduxState", "product", "content"]:
-            current_data = cast(dict[str, object], current_data[key])
+            new_data: object | None = current_data.get(key)
+            if new_data is None:
+                return None
+            current_data: dict[str, object] = cast(dict[str, object], new_data)
+
         return current_data
 
-    def _getattributes(self) -> dict[str, object]:
+    def _getattributes(self) -> dict[str, object] | None:
         """_summary_
 
         Returns:
             dict[str, object]: _description_
         """
-        current_data: object = self._getcontent()["attributes"]
-        return cast(dict[str, object], current_data)
+        current_data: object = self._getcontent()
+        if current_data is None:
+            return None
+        return cast(dict[str, object], current_data.get("attributes"))
 
-    def appellation(self) -> str:
+    def appellation(self) -> str | None:
         """_summary_
 
         Returns:
             str: _description_
         """
-        current_value: dict[str, object] = self._getattributes()
+        current_value: dict[str, object] | None = self._getattributes()
+
+        if current_value is None:
+            return None
+
         app_dict: dict[str, object] = cast(
-            dict[str, object], current_value["appellation"]
+            dict[str, object], current_value.get("appellation")
         )
         return cast(str, app_dict["value"])
 
@@ -50,13 +60,14 @@ class _ScraperData:
         Returns:
             str | None: _description_
         """
-        current_value: dict[str, object] = self._getattributes()
-        app_dict: dict[str, object] | None = cast(
-            dict[str, object] | None, current_value.get(name)
-        )
+        current_value: dict[str, object] | None = self._getattributes()
 
-        if app_dict is None:
+        if current_value is None:
             return None
+
+        app_dict: dict[str, object] = cast(
+            dict[str, object], current_value.get(name)
+        )
 
         val: list[str] = cast(str, app_dict.get("attributes")).rstrip("+").split("-")
         # dans le cas où 93-94 -> [93, 94] -> 93.5
@@ -212,4 +223,3 @@ class Scraper:
 
         return _ScraperData(cast(dict[str, object], current_data))
 
-# print(Scraper().getjsondata("bordeaux.html?page=1").getdata())
