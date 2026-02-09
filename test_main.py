@@ -2,7 +2,7 @@ from json import dumps
 from bs4 import Tag
 import pytest
 from requests_mock import Mocker
-from main import Scraper, ScraperData
+from main import Scraper
 
 
 @pytest.fixture(autouse=True)
@@ -137,13 +137,13 @@ def test_soup(scraper: Scraper):
 
 
 def test_appellation(scraper: Scraper):
-    appellation: ScraperData = scraper.getjsondata(
+    appellation  = scraper.getjsondata(
         "nino-negri-5-stelle-sfursat-2022.html"
     )
     assert appellation.appellation() == "Sforzato di Valtellina"
 
 def test_critiques(scraper: Scraper):
-    critiques: ScraperData = scraper.getjsondata(
+    critiques  = scraper.getjsondata(
         "nino-negri-5-stelle-sfursat-2022.html"
     )
     assert critiques.parker() == "91"
