@@ -43,57 +43,43 @@ class _ScraperData:
         """
 
         content = self._getcontent()
-        
         if content is None:
             return None
 
         items = content.get("items")
 
-        # Si aucun format disponible -> pas de prix
-        if isinstance(items, list):
-            
-            if len(items) == 0:
-                return None
-
-            for item in items:
-
-                if not isinstance(item, dict):
-                    continue
-
-                attrs = item.get("attributes", {})
-
-                nbunit = attrs.get("nbunit", {}).get("value")
-                equivbtl = attrs.get("equivbtl", {}).get("value")
-
-                if nbunit == "1" and equivbtl == "1":
-
-                    p = item.get("offerPrice")
-
-                    if isinstance(p, (int, float)):
-                        return float(p)
-
-            for item in items:
-
-                if not isinstance(item, dict):
-                    continue
-
-                p = item.get("offerPrice")
-                attrs = item.get("attributes", {})
-
-                nbunit = attrs.get("nbunit", {}).get("value")
-                equivbtl = attrs.get("equivbtl", {}).get("value")
-
-                if isinstance(p, (int, float)) and nbunit and equivbtl:
-
-                    denom = float(nbunit) * float(equivbtl)
-
-                    if denom > 0:
-
-                        prix_unitaire = float(p) / denom
-
-                        return round(prix_unitaire, 2)
-
+        # Vérifie que items existe et n'est pas vide
+        if not isinstance(items, list) or len(items) == 0:
             return None
+
+        prix_calcule: float | None = None
+
+        for item in items:
+
+            if not isinstance(item, dict):
+                continue
+
+            p = item.get("offerPrice")
+            attrs = item.get("attributes", {})
+
+            nbunit = attrs.get("nbunit", {}).get("value")
+            equivbtl = attrs.get("equivbtl", {}).get("value")
+
+            if not isinstance(p, (int, float)) or not nbunit or not equivbtl:
+                continue
+
+            nb = float(nbunit)
+            eq = float(equivbtl)
+
+            if nb <= 0 or eq <= 0:
+                continue
+
+            if nb == 1 and eq == 1:
+                return float(p)
+
+            prix_calcule = round(float(p) / (nb * eq), 2)
+
+        return prix_calcule
 
     def appellation(self) -> str | None:
         """_summary_
