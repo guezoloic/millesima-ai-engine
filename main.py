@@ -35,90 +35,65 @@ class _ScraperData:
             return None
         return cast(dict[str, object], current_data.get("attributes"))
 
-    def prix(self) -> float:
+    def prix(self) -> float | None:
         """
-            Retourne le prix unitaire d'une bouteille (75cl).
+        Retourne le prix unitaire d'une bouteille (75cl).
 
-            Le JSON contient plusieurs formats de vente dans content["items"] :
-            - bouteille seule : nbunit = 1 et equivbtl = 1 -> prix direct
-            - caisse de plusieurs bouteilles : nbunit > 1 -> on divise le prix total
-            - formats spéciaux (magnum etc.) : equivbtl > 1 -> même calcul
+        Si aucun prix n'est disponible, retourne None.
+        """
 
-            Formule générale :
-                prix_unitaire = offerPrice / (nbunit * equivbtl)
-
-            """
-
-        content = self._getcontent()  
-
-        # si content n'existe pas -> erreur
+        content = self._getcontent()
+        
         if content is None:
-            raise ValueError("Contenu introuvable")
+            return None
 
-        # On récupère la liste des formats disponibles (bouteille, carton...)
         items = content.get("items")
 
-        # Vérification que items est bien une liste non vide
-        if not isinstance(items, list) or len(items) == 0:
-            raise ValueError("Aucun prix disponible (items vide)")
-
-        # --------------------------
-        # CAS 1 : bouteille unitaire
-        # --------------------------
-        # On cherche un format où nbunit=1 et equivbtl=1 ->bouteille standard 75cl 
-        for item in items:
+        # Si aucun format disponible -> pas de prix
+        if isinstance(items, list):
             
-            if not isinstance(item, dict):
-                continue
+            if len(items) == 0:
+                return None
 
-            # On récupère les attributs du format
-            attrs = item.get("attributes", {})
+            for item in items:
 
-            # On récupère nbunit et equivbtl
-            nbunit = attrs.get("nbunit", {}).get("value")
-            equivbtl = attrs.get("equivbtl", {}).get("value")
+                if not isinstance(item, dict):
+                    continue
 
-            # Si c'est une bouteille unitaire
-            if nbunit == "1" and equivbtl == "1":
+                attrs = item.get("attributes", {})
+
+                nbunit = attrs.get("nbunit", {}).get("value")
+                equivbtl = attrs.get("equivbtl", {}).get("value")
+
+                if nbunit == "1" and equivbtl == "1":
+
+                    p = item.get("offerPrice")
+
+                    if isinstance(p, (int, float)):
+                        return float(p)
+
+            for item in items:
+
+                if not isinstance(item, dict):
+                    continue
 
                 p = item.get("offerPrice")
+                attrs = item.get("attributes", {})
 
-                # Vérification que c'est bien un nombre
-                if isinstance(p, (int, float)):
-                    return float(p)
+                nbunit = attrs.get("nbunit", {}).get("value")
+                equivbtl = attrs.get("equivbtl", {}).get("value")
 
-        # --------------------------
-        # CAS 2 : caisse ou autre format
-        # --------------------------
-        # On calcule le prix unitaire à partir du prix total
-        for item in items:
+                if isinstance(p, (int, float)) and nbunit and equivbtl:
 
-            if not isinstance(item, dict):
-                continue
+                    denom = float(nbunit) * float(equivbtl)
 
-            p = item.get("offerPrice")
-            attrs = item.get("attributes", {})
+                    if denom > 0:
 
-            nbunit = attrs.get("nbunit", {}).get("value")
-            equivbtl = attrs.get("equivbtl", {}).get("value")
+                        prix_unitaire = float(p) / denom
 
-            # Vérification que toutes les valeurs existent
-            if isinstance(p, (int, float)) and nbunit and equivbtl:
+                        return round(prix_unitaire, 2)
 
-                # Calcul du nombre total de bouteilles équivalentes
-                denom = float(nbunit) * float(equivbtl)
-
-                # Évite division par zéro
-                if denom > 0:
-
-                    # Calcul du prix unitaire
-                    prix_unitaire = float(p) / denom
-
-                    # Arrondi à 2 décimales
-                    return round(prix_unitaire, 2)
-
-        # Si aucun prix trouvé
-        raise ValueError("Impossible de trouver le prix unitaire.")
+            return None
 
     def appellation(self) -> str | None:
         """_summary_
@@ -181,10 +156,12 @@ class _ScraperData:
         parker = self.parker()
         robinson = self.robinson()
         suckling = self.suckling()
-        prix = self.prix()
-
+        try:
+            prix = self.prix()
+        except ValueError:
+            prix = None
+            
         return f"{appellation},{parker},{robinson},{suckling},{prix}"
-
 
 
 class Scraper:

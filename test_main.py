@@ -225,22 +225,20 @@ def test_critiques(scraper: Scraper):
     assert contenu.suckling() == "93.5"
     assert contenu._getcritiques("test_ts") is None
 
+
 def test_prix(scraper: Scraper):
     vide = scraper.getjsondata("")
     poubelle = scraper.getjsondata("poubelle")
     contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
-
-    # Cas vide : items == [] -> on ne peut pas calculer -> ValueError
-    with pytest.raises(ValueError):
-        _ = vide.prix()
-
-    # Cas poubelle : JSON incomplet -> _getcontent() None -> ValueError
-    with pytest.raises(ValueError):
-        _ = poubelle.prix()
-
+    assert vide.prix() is None
+    assert poubelle.prix() is None
     assert contenu.prix() == 65.0
-
+    
+    
 def test_informations(scraper: Scraper):
     contenu = scraper.getjsondata("nino-negri-5-stelle-sfursat-2022.html")
     assert contenu.informations() == "Sforzato di Valtellina,91,17,93.5,65.0"
-
+    vide = scraper.getjsondata("")
+    poubelle = scraper.getjsondata("poubelle")
+    assert vide.informations() == "None,None,None,None,None"
+    assert poubelle.informations() == "None,None,None,None,None"
