@@ -35,44 +35,24 @@ class _ScraperData:
             return None
         return cast(dict[str, object], current_data.get("attributes"))
 
-    def prix(self) -> float:
+    def prix(self) -> float | None:
         """
         Retourne le prix unitaire d'une bouteille (75cl).
 
-        Le JSON contient plusieurs formats de vente dans content["items"] :
-        - bouteille seule : nbunit = 1 et equivbtl = 1 -> prix direct
-        - caisse de plusieurs bouteilles : nbunit > 1 -> on divise le prix total
-        - formats spéciaux (magnum etc.) : equivbtl > 1 -> même calcul
-
-        Formule générale :
-            prix_unitaire = offerPrice / (nbunit * equivbtl)
+        Si aucun prix n'est disponible, retourne None.
         """
 
         content = self._getcontent()
-
         if content is None:
-            raise ValueError("Contenu introuvable")
+            return None
 
         items = content.get("items")
 
+        # Vérifie que items existe et n'est pas vide
         if not isinstance(items, list) or len(items) == 0:
-            raise ValueError("Aucun prix disponible (items vide)")
+            return None
 
-        for item in items:
-
-            if not isinstance(item, dict):
-                continue
-
-            attrs = item.get("attributes", {})
-
-            nbunit = attrs.get("nbunit", {}).get("value")
-            equivbtl = attrs.get("equivbtl", {}).get("value")
-
-            if nbunit == "1" and equivbtl == "1":
-                p = item.get("offerPrice")
-
-                if isinstance(p, (int, float)):
-                    return float(p)
+        prix_calcule: float | None = None
 
         for item in items:
             if not isinstance(item, dict):
@@ -84,13 +64,21 @@ class _ScraperData:
             nbunit = attrs.get("nbunit", {}).get("value")
             equivbtl = attrs.get("equivbtl", {}).get("value")
 
-            if isinstance(p, (int, float)) and nbunit and equivbtl:
-                denom = float(nbunit) * float(equivbtl)
+            if not isinstance(p, (int, float)) or not nbunit or not equivbtl:
+                continue
 
-                if denom > 0:
-                    prix_unitaire = float(p) / denom
-                    return round(prix_unitaire, 2)
-        raise ValueError("Impossible de trouver le prix unitaire.")
+            nb = float(nbunit)
+            eq = float(equivbtl)
+
+            if nb <= 0 or eq <= 0:
+                continue
+
+            if nb == 1 and eq == 1:
+                return float(p)
+
+            prix_calcule = round(float(p) / (nb * eq), 2)
+
+        return prix_calcule
 
     def appellation(self) -> str | None:
         """_summary_
@@ -153,7 +141,10 @@ class _ScraperData:
         parker = self.parker()
         robinson = self.robinson()
         suckling = self.suckling()
-        prix = self.prix()
+        try:
+            prix = self.prix()
+        except ValueError:
+            prix = None
 
         return f"{appellation},{parker},{robinson},{suckling},{prix}"
 
@@ -293,26 +284,41 @@ class Scraper:
 
         return _ScraperData(cast(dict[str, object], current_data))
 
+    # def _geturlsearch(self, subdir: str, index: int) -> str | None:
+    #     data: dict[str, object] = self.getjsondata(subdir).getdata()
 
-def getvins(subdir: str, n: int) -> None:
-    """_summary_
+    #     for element in ["initialReduxState", "categ", "content"]:
+    #         data = cast(dict[str, object], data.get(element))
+    #         if data is None or not isinstance(data, dict):
+    #             return None
 
-    Args:
-        subdir (str): _description_
-        n (int): nombre de page recherché
-    """
-    scraper: Scraper = Scraper()
-    for i in range(1, n+1):
-        j = 0
-        while True:
-            try:
-                var = scraper.getjsondata(subdir=f"{subdir}?page={i}").getdata()["initialReduxState"]["categ"]["content"]["products"][j]["seoKeyword"]
-                print(scraper.getjsondata(var).informations())
-                j+=1
-            except:
-                break
+    #     products = data.get("products")
+    #     if not isinstance(products, list) or index >= len(products):
+    #         return None
 
-        print(f"--- fin {i}e page ---")
-# https://www.millesima.fr/bordeaux.html?page=1
+    #     product = products[index]
+    #     if isinstance(product, dict):
+    #         return str(product.get("seoKeyword"))
 
-getvins("bordeaux.html", 1)
+    #     return None
+
+    # def getvins(self, subdir: str) -> None:
+    #     cache: set[str] = set[str]()
+
+    #     for page in range(1, 2):
+    #         index_link = 1
+    #         while True:
+    #             link: str | None = self._geturlsearch(
+    #                 subdir=f"{subdir}?page={page}", index=index_link
+    #             )
+
+    #             index_link+=1
+    #             if link is None:
+    #                 break
+                
+    #             if link not in cache:
+    #                 print(self.getjsondata(link).informations())
+    #                 cache.add(link)
+
+
+# Scraper().getvins("bordeaux.html")
