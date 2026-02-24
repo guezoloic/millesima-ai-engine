@@ -151,10 +151,7 @@ class _ScraperData:
         parker = self.parker()
         robinson = self.robinson()
         suckling = self.suckling()
-        try:
-            prix = self.prix()
-        except ValueError:
-            prix = None
+        prix = self.prix()
 
         return f"{appellation},{parker},{robinson},{suckling},{prix}"
 
@@ -194,7 +191,10 @@ class Scraper:
             HTTPError: Si le serveur renvoie un code d'erreur (4xx, 5xx).
         """
         target_url: str = self._url + subdir.lstrip("/")
+        print(f"[DEBUG] GET {target_url}")
         response: Response = self._session.get(url=target_url, timeout=10)
+        print(f"[DEBUG] status={response.status_code} len={len(response.text)}")
+        print(f"[DEBUG] head={response.text[:120].replace('\\n',' ')}")
         response.raise_for_status()
         return response
 
@@ -307,15 +307,20 @@ class Scraper:
             data: dict[str, object] = self.getjsondata(subdir).getdata()
 
             for element in ["initialReduxState", "categ", "content"]:
-                data: dict[str, object] = cast(dict[str, object], data.get(element))
-                if not isinstance(data, dict):
+                nxt = data.get(element)
+                print("DEBUG key", element, "->", type(nxt))
+                if not isinstance(nxt, dict):
+                    print("DEBUG structure manquante, stop sur", element)
                     return None
+                data = nxt
 
-            products: list[str] = cast(list[str], data.get("products"))
+            products = data.get("products")
+            print("DEBUG products type:", type(products), "len:", 0 if not isinstance(products, list) else len(products))
             if isinstance(products, list):
                 return products
 
-        except (JSONDecodeError, HTTPError):
+        except (JSONDecodeError, HTTPError) as e:
+            print(f"DEBUG HTTP/JSON error sur {subdir}: {type(e).__name__} {e}")
             return None
 
     def getvins(self, subdir: str, filename: str):
