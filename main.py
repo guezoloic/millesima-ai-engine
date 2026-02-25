@@ -12,11 +12,12 @@ def main() -> None:
     path: str = normpath(join(getcwd(), argv[1]))
     db: DataFrame = read_csv(path)
     print(db.all())
-    print(db.head())
     print(db.info())
     print("\nnombre de valeurs manquantes pour chaque colonne :")
     print(db.isna().sum())
-    
+    db = db.dropna(subset=["Appellation"])
+    db.to_csv("donnee_clean.csv", index=False)
+    print(db.isna().sum())
 
 if __name__ == "__main__":
     try:
