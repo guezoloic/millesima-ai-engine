@@ -3,9 +3,12 @@
 from sys import argv
 from typing import cast
 from requests import HTTPError, Response, Session
+from requests.exceptions import Timeout, ConnectionError
+import time
 from bs4 import BeautifulSoup, Tag
 from collections import OrderedDict
 from json import JSONDecodeError, loads
+from pathlib import Path
 
 
 class _ScraperData:
@@ -171,6 +174,12 @@ class Scraper:
         # Très utile pour éviter de renvoyer toujours les mêmes handshake
         # TCP et d'avoir toujours une connexion constante avec le server
         self._session: Session = Session()
+        self._session.headers.update({
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 (KHTML, like Gecko) "
+                        "Chrome/122.0.0.0 Safari/537.36",
+            "Accept-Language": "fr-FR,fr;q=0.9,en;q=0.8",
+        })
         # Système de cache pour éviter de solliciter le serveur inutilement
         self._latest_request: tuple[(str, Response)] | None = None
         self._latest_soups: OrderedDict[str, BeautifulSoup] = OrderedDict[
@@ -191,12 +200,20 @@ class Scraper:
             HTTPError: Si le serveur renvoie un code d'erreur (4xx, 5xx).
         """
         target_url: str = self._url + subdir.lstrip("/")
-        print(f"[DEBUG] GET {target_url}")
-        response: Response = self._session.get(url=target_url, timeout=10)
-        print(f"[DEBUG] status={response.status_code} len={len(response.text)}")
-        print(f"[DEBUG] head={response.text[:120].replace('\\n',' ')}")
-        response.raise_for_status()
-        return response
+        
+        last_exc: Exception | None = None
+        for attempt in range(1, 4):
+            try:
+                response: Response = self._session.get(url=target_url, timeout=30)
+                response.raise_for_status()
+                return response
+            except (Timeout, ConnectionError) as e:
+                last_exc = e
+                print(f"Timeout/ConnectionError ({attempt}/3) sur {target_url}: {e}")
+                time.sleep(2 * attempt)  # 2s, 4s, 6s
+
+        # après 3 essais, on abandonne
+        raise last_exc if last_exc else RuntimeError("Request failed")
 
     def getresponse(self, subdir: str = "", use_cache: bool = True) -> Response:
         """
@@ -307,22 +324,38 @@ class Scraper:
             data: dict[str, object] = self.getjsondata(subdir).getdata()
 
             for element in ["initialReduxState", "categ", "content"]:
-                nxt = data.get(element)
-                print("DEBUG key", element, "->", type(nxt))
-                if not isinstance(nxt, dict):
-                    print("DEBUG structure manquante, stop sur", element)
+                data: dict[str, object] = cast(dict[str, object], data.get(element))
+                if not isinstance(data, dict):
                     return None
-                data = nxt
 
-            products = data.get("products")
-            print("DEBUG products type:", type(products), "len:", 0 if not isinstance(products, list) else len(products))
+            products: list[str] = cast(list[str], data.get("products"))
             if isinstance(products, list):
                 return products
 
-        except (JSONDecodeError, HTTPError) as e:
-            print(f"DEBUG HTTP/JSON error sur {subdir}: {type(e).__name__} {e}")
+        except (JSONDecodeError, HTTPError):
             return None
 
+    def _save_progress(self, page: int, i: int, last_link: str) -> None:
+        Path("progress.txt").write_text(f"{page},{i},{last_link}", encoding="utf-8")
+
+
+    def _load_progress(self) -> tuple[int, int, str | None]:
+        p = Path("progress.txt")
+        if not p.exists():
+            return (1, 0, None)
+
+        try:
+            parts = p.read_text(encoding="utf-8").strip().split(",", 2)
+
+            page = int(parts[0])
+            i = int(parts[1])
+
+            last_link = parts[2] if len(parts) == 3 and parts[2] != "" else None
+            return (page, i, last_link)
+
+        except Exception:
+            return (1, 0, None)
+        
     def getvins(self, subdir: str, filename: str):
         """_summary_
 
@@ -330,11 +363,17 @@ class Scraper:
             subdir (str): _description_
             filename (str): _description_
         """
-        with open(filename, "a") as f:
+        start_page, start_i, last_link = self._load_progress()
+        print(f"__INFO__ Reprise à page={start_page}, index={start_i}, last_link={last_link}")
+        
+        with open(filename, "a", encoding="utf-8") as f:
             cache: set[str] = set[str]()
-            page = 0
-            _ = f.write("Appellation,Robert,Robinson,Suckling,Prix\n")
-
+            
+            if f.tell() == 0:
+                _ = f.write("Appellation,Robert,Robinson,Suckling,Prix\n")
+                
+            page = start_page - 1
+            
             while True:
                 page += 1
                 products_list = self._geturlproductslist(f"{subdir}?page={page}")
@@ -343,23 +382,39 @@ class Scraper:
                     break
 
                 products_list_length = len(products_list)
-                for i, product in enumerate(products_list):
+                start_at = start_i if page == start_page else 0
+
+                for i in range(start_at, products_list_length):
+                    product = products_list[i]
                     if not isinstance(product, dict):
                         continue
 
                     link = product.get("seoKeyword")
+                    if not link:
+                        continue
 
-                    if link and link not in cache:
-                        try:
-                            infos = self.getjsondata(link).informations()
-                            _ = f.write(infos + "\n")
-                            print(
-                                f"page: {page} | {i + 1}/{products_list_length} {link}"
-                            )
-                            cache.add(link)
-                        except (JSONDecodeError, HTTPError) as e:
-                            print(f"Erreur sur le produit {link}: {e}")
+                    # pour eviter les doublons :
+                    if (page == start_page) and (last_link is not None) and (link == last_link):
+                        self._save_progress(page, + 1, link)
+                        continue
+
+                    self._save_progress(page, i + 1, link)
+
+                    if link in cache:
+                        continue
+
+                    try:
+                        infos = self.getjsondata(link).informations()
+                        _ = f.write(infos + "\n")
+                        print(f"page: {page} | {i + 1}/{products_list_length} {link}")
+                        cache.add(link)
+
+                    except (JSONDecodeError, HTTPError) as e:
+                        print(f"Erreur sur le produit {link}: {e}")
+
                 f.flush()
+
+        Path("progress.txt").unlink(missing_ok=True)
 
 
 def main() -> None:
