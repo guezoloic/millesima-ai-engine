@@ -319,7 +319,7 @@ def test_informations(scraper: Scraper):
 def test_search(scraper: Scraper):
     m = mock_open()
     with patch("builtins.open", m):
-        scraper.getvins("wine.html", "fake_file.csv")
+        scraper.getvins("wine.html", "fake_file.csv", False)
 
     assert m().write.called
     all_writes = "".join(call.args[0] for call in m().write.call_args_list)

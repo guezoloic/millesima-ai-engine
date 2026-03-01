@@ -331,7 +331,7 @@ class Scraper:
         except (JSONDecodeError, HTTPError):
             return None
 
-    def getvins(self, subdir: str, filename: str) -> None:
+    def getvins(self, subdir: str, filename: str, reset: bool) -> None:
         """_summary_
 
         Args:
@@ -375,7 +375,7 @@ def main() -> None:
     if len(argv) != 2:
         raise ValueError(f"{argv[0]} <sous-url>")
     scraper: Scraper = Scraper()
-    scraper.getvins(argv[1], "donnee.csv")
+    scraper.getvins(argv[1], "donnee.csv", False)
 
 
 if __name__ == "__main__":
