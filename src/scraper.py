@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 
-from io import SEEK_END, SEEK_SET, BufferedWriter, BufferedReader
-from os.path import exists, normpath, realpath, dirname, join
-from os import makedirs
-from pickle import dump, load, UnpicklingError
-from sys import argv
-from typing import Any, Callable, Literal, cast
-from requests import HTTPError, Response, Session
-from bs4 import BeautifulSoup, Tag
 from collections import OrderedDict
+from io import SEEK_END, SEEK_SET, BufferedWriter
 from json import JSONDecodeError, loads
+from os import makedirs
+from os.path import dirname, exists, join, normpath, realpath
+from pickle import UnpicklingError, dump, load
+from sys import argv
+from tqdm.std import tqdm
+from typing import Any, Callable, Literal, TypeVar, cast
+from bs4 import BeautifulSoup, Tag
+from requests import HTTPError, Response, Session
 
 _dir: str = dirname(realpath(__name__))
 
+T = TypeVar("T")
 
-def _getcache[T](mode: Literal["rb", "wb"], fn: Callable[[Any], T]) -> T | None:
+
+def _getcache(mode: Literal["rb", "wb"], fn: Callable[[Any], T]) -> T | None:
     """_summary_
 
     Returns:
@@ -39,7 +42,9 @@ def savestate(data: tuple[int, set[str]]) -> None:
         _ = f.truncate()
         dump(data, f)
         f.flush()
+
     _getcache("wb", save)
+
 
 def loadstate() -> tuple[int, set[str]] | None:
     return _getcache("rb", lambda f: load(f))
@@ -147,7 +152,6 @@ class _ScraperData:
             str | None: Le nom (ex: 'Pauillac') ou None.
         """
         attrs: dict[str, object] | None = self._getattributes()
-
         if attrs is not None:
             app_dict: object | None = attrs.get("appellation")
             if isinstance(app_dict, dict):
@@ -365,7 +369,7 @@ class Scraper:
 
         return _ScraperData(cast(dict[str, object], current_data))
 
-    def _geturlproductslist(self, subdir: str) -> list[str] | None:
+    def _geturlproductslist(self, subdir: str) -> list[dict[str, Any]] | None:
         """
         Récupère la liste des produits d'une page de catégorie.
         """
@@ -373,32 +377,61 @@ class Scraper:
             data: dict[str, object] = self.getjsondata(subdir).getdata()
 
             for element in ["initialReduxState", "categ", "content"]:
-                data: dict[str, object] = cast(dict[str, object], data.get(element))
-                if not isinstance(data, dict):
-                    return None
+                data = cast(dict[str, object], data.get(element))
 
-            products: list[str] = cast(list[str], data.get("products"))
+            products: list[dict[str, Any]] = cast(
+                list[dict[str, Any]], data.get("products")
+            )
+
             if isinstance(products, list):
                 return products
 
         except (JSONDecodeError, HTTPError):
             return None
 
+    def _writevins(self, cache: set[str], product: dict[str, Any], f: Any) -> None:
+        """_summary_
+
+        Args:
+            cache (set[str]): _description_
+            product (dict): _description_
+            f (Any): _description_
+        """
+        if isinstance(product, dict):
+            link: Any | None = product.get("seoKeyword")
+            if link and link not in cache:
+                try:
+                    infos = self.getjsondata(link).informations()
+                    _ = f.write(infos + "\n")
+                    cache.add(link)
+                except (JSONDecodeError, HTTPError) as e:
+                    print(f"Erreur sur le produit {link}: {e}")
+
     def getvins(self, subdir: str, filename: str, reset: bool = False) -> None:
         """
-        Scrape récursivement toutes les pages d'une catégorie et sauvegarde en CSV.
+        Scrape  toutes les pages d'une catégorie et sauvegarde en CSV.
 
         Args:
             subdir (str): La catégorie (ex: '/vins-rouges').
             filename (str): Nom du fichier de sortie (ex: 'vins.csv').
             reset (bool): (Optionnel) pour réinitialiser le processus.
         """
+        # mode d'écriture fichier
         mode: Literal["w", "a+"] = "w" if reset else "a+"
+        # titre
         title: str = "Appellation,Robert,Robinson,Suckling,Prix\n"
+        # page du début
         page: int = 1
+        # le set qui sert de cache
         cache: set[str] = set[str]()
 
+        custom_format = "{l_bar} {bar:20} {r_bar}"
+
         if not reset:
+            # appelle la fonction pour load le cache, si il existe
+            # pas, il utilise les variables de base sinon il override
+            # toute les variables pour continuer et pas recommencer le
+            # processus en entier.
             serializable: tuple[int, set[str]] | None = loadstate()
             if isinstance(serializable, tuple):
                 page, cache = serializable
@@ -416,33 +449,23 @@ class Scraper:
                     _ = f.seek(0, SEEK_END)
 
                 while True:
-                    products_list: list[str] | None = self._geturlproductslist(
-                        f"{subdir}?page={page}"
+                    products_list: list[dict[str, Any]] | None = (
+                        self._geturlproductslist(f"{subdir}?page={page}")
                     )
-
                     if not products_list:
                         break
 
-                    products_list_length = len(products_list)
-                    for i, product in enumerate(products_list):
-                        if not isinstance(product, dict):
-                            continue
-
-                        link = product.get("seoKeyword")
-
-                        if link and link not in cache:
-                            try:
-                                infos = self.getjsondata(link).informations()
-                                _ = f.write(infos + "\n")
-                                print(
-                                    f"page: {page} | {i + 1}/{products_list_length} {link}"
-                                )
-                                cache.add(link)
-                            except (JSONDecodeError, HTTPError) as e:
-                                print(f"Erreur sur le produit {link}: {e}")
-                    f.flush()
+                    pbar: tqdm[dict[str, Any]] = tqdm(
+                        products_list, bar_format=custom_format
+                    )
+                    for product in pbar:
+                        keyword = product.get("seoKeyword", "Inconnu")[:40]
+                        pbar.set_description(
+                            f"Page: {page:<3} | Product: {keyword:<40}"
+                        )
+                        self._writevins(cache, product, f)
                     page += 1
-        except:
+        except Exception:
             if not reset:
                 savestate((page, cache))
 
