@@ -57,7 +57,13 @@ def main() -> None:
     df_missing_scores = fill_missing_scores(df)
     save_csv(df_missing_scores, "donnee_filled.csv")
     print("\n=== Après remplissage des notes manquantes ===")
-    display_info(df_missing_scores)  
+    display_info(df_missing_scores) 
+     
+    df_ready = encode_appellation(df_missing_scores)
+    save_csv(df_ready, "donnee_ready.csv")
+    print("\n=== Après remplacer la colonne 'Appellation' par des colonnes indicatrices  ===")
+    display_info(df_ready)
+    print(df_ready.filter(like="App_").any().head())
 
 if __name__ == "__main__":
     try:

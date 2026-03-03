@@ -74,3 +74,18 @@ def fill_missing_scores(df: DataFrame) -> DataFrame:
 
     df_copy = df_copy.drop(columns=temp_cols)
     return df_copy
+
+
+def encode_appellation(df: DataFrame, column: str = "Appellation") -> DataFrame:
+    """
+    Remplace la colonne 'Appellation' par des colonnes indicatrices
+    """
+    df_copy = df.copy()
+    
+    appellations = df_copy[column].astype(str).str.strip()
+
+    appellation_dummies = pd.get_dummies(appellations)
+
+    df_copy = df_copy.drop(columns=[column])
+
+    return df_copy.join(appellation_dummies)
