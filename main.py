@@ -29,41 +29,33 @@ def main() -> None:
 
     df = load_csv(argv[1])
 
-    print("=== Avant nettoyage ===")
-    display_info(df)
+    display_info(df, "Avant le nettoyage")
 
     df = drop_empty_appellation(df)
     save_csv(df, "donnee_clean.csv")
-
-    print("\n=== Après nettoyage d'appellations manquantes ===")
-    display_info(df)
+    display_info(df, "Après nettoyage d'appellations manquantes")
     
     #la moyenne des notes des vins pour chaque appellation
     robert_means = mean_robert(df)
     save_csv(robert_means, "mean_robert_by_appellation.csv")
-    print("\n=== moyenne Robert par appellation ===")
-    print(robert_means.head(10))
+    display_info(robert_means, "Moyennes Robert par appellation")
 
     robinson_means = mean_robinson(df)
     save_csv(robinson_means, "mean_robinson_by_appellation.csv")
-    print("\n=== moyennes Robinson par appellation ===")
-    print(robinson_means.head(10))
-    
+    display_info(robinson_means, "Moyennes Robinson par appellation")
+  
     suckling_means = mean_suckling(df)
     save_csv(suckling_means, "mean_suckling_by_appellation.csv")
-    print("\n=== moyennes Suckling par appellation ===")
-    print(suckling_means.head(10))
+    display_info(suckling_means, "Moyennes Suckling par appellation")
     
     df_missing_scores = fill_missing_scores(df)
     save_csv(df_missing_scores, "donnee_filled.csv")
-    print("\n=== Après remplissage des notes manquantes ===")
-    display_info(df_missing_scores) 
+    display_info(df_missing_scores, "Après remplissage des notes manquantes par la moyenne de l'appellation")
      
     df_ready = encode_appellation(df_missing_scores)
     save_csv(df_ready, "donnee_ready.csv")
-    print("\n=== Après remplacer la colonne 'Appellation' par des colonnes indicatrices  ===")
-    display_info(df_ready)
-    print(df_ready.filter(like="App_").any().head())
+    display_info(df_ready, "Après remplacer la colonne 'Appellation' par des colonnes indicatrices")
+
 
 if __name__ == "__main__":
     try:

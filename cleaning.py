@@ -5,11 +5,26 @@ import pandas as pd
 SCORE_COLS = ["Robert", "Robinson", "Suckling"]
 
 
-def display_info(df: DataFrame) -> None:
-    df.describe()
-    print(df.info())
-    print("\nNombre de valeurs manquantes par colonne :")
+def display_info(df: DataFrame, name: str = "DataFrame") -> None:
+    """
+    Affiche un résumé du DataFrame
+        -la taille
+        -types des colonnes
+        -valeurs manquantes
+        -statistiques numériques
+    """
+    print(f"\n===== {name} =====")
+
+    print(f"Shape : {df.shape[0]} lignes × {df.shape[1]} colonnes")
+
+    print("\nTypes des colonnes :")
+    print(df.dtypes)
+
+    print("\nValeurs manquantes :")
     print(df.isna().sum())
+
+    print("\nStatistiques numériques :")
+    print(df.describe().round(2))
 
 
 def drop_empty_appellation(df: DataFrame) -> DataFrame:
