@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 from pandas import DataFrame, to_numeric
+import pandas as pd
+
+SCORE_COLS = ["Robert", "Robinson", "Suckling"]
 
 
 def display_info(df: DataFrame) -> None:
-    print(df.all())
+    df.describe()
     print(df.info())
     print("\nNombre de valeurs manquantes par colonne :")
     print(df.isna().sum())
@@ -46,3 +49,28 @@ def mean_robinson(df: DataFrame) -> DataFrame:
 
 def mean_suckling(df: DataFrame) -> DataFrame:
     return mean_score(df, "Suckling")
+
+
+def fill_missing_scores(df: DataFrame) -> DataFrame:
+    """
+    Remplacer les notes manquantes par la moyenne
+    des vins de la même appellation.
+    """
+    df_copy = df.copy()
+    df_copy["Appellation"] = df_copy["Appellation"].astype(str).str.strip()
+
+    for score in SCORE_COLS:
+        df_copy[score] = to_numeric(df_copy[score], errors="coerce")
+
+    temp_cols: list[str] = []
+
+    for score in SCORE_COLS:
+        mean_df = mean_score(df_copy, score)
+        mean_name = f"mean_{score}"
+        temp_cols.append(mean_name)
+
+        df_copy = df_copy.merge(mean_df, on="Appellation", how="left")
+        df_copy[score] = df_copy[score].fillna(df_copy[mean_name])
+
+    df_copy = df_copy.drop(columns=temp_cols)
+    return df_copy

@@ -9,7 +9,9 @@ from cleaning import (display_info,
                       drop_empty_appellation,
                       mean_robert,
                       mean_robinson,
-                      mean_suckling)
+                      mean_suckling,
+                      fill_missing_scores,
+                      encode_appellation)
 
 
 def load_csv(filename: str) -> DataFrame:
@@ -44,14 +46,18 @@ def main() -> None:
 
     robinson_means = mean_robinson(df)
     save_csv(robinson_means, "mean_robinson_by_appellation.csv")
-    print("\n===: moyennes Robinson par appellation ===")
+    print("\n=== moyennes Robinson par appellation ===")
     print(robinson_means.head(10))
     
     suckling_means = mean_suckling(df)
     save_csv(suckling_means, "mean_suckling_by_appellation.csv")
-    print("\n===: moyennes Suckling par appellation ===")
+    print("\n=== moyennes Suckling par appellation ===")
     print(suckling_means.head(10))
-
+    
+    df_missing_scores = fill_missing_scores(df)
+    save_csv(df_missing_scores, "donnee_filled.csv")
+    print("\n=== Après remplissage des notes manquantes ===")
+    display_info(df_missing_scores)  
 
 if __name__ == "__main__":
     try:
