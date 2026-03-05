@@ -384,8 +384,7 @@ class Scraper:
                 list[dict[str, Any]], data.get("products")
             )
 
-            if isinstance(products, list):
-                return products
+            return products
 
         except (JSONDecodeError, HTTPError):
             return None
@@ -461,12 +460,18 @@ class Scraper:
                         products_list, bar_format=custom_format
                     )
                     for product in pbar:
-                        keyword = product.get("seoKeyword", "Inconnu")[:40]
+                        keyword: str = cast(
+                            str, product.get("seoKeyword", "Inconnu")[:40]
+                        )
                         pbar.set_description(
                             f"Page: {page:<3} | Product: {keyword:<40}"
                         )
                         self._writevins(cache, product, f)
                     page += 1
+                    # va créer un fichier au début et l'override
+                    # tout les 5 pages au cas où SIGHUP ou autre 
+                    if page % 5 == 0 and not reset:
+                        savestate((page, cache))
         except (Exception, HTTPError, KeyboardInterrupt, JSONDecodeError):
             if not reset:
                 savestate((page, cache))
