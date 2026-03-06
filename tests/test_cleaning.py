@@ -62,6 +62,6 @@ def test_encode_appellation(cleaning_raw: Cleaning):
         .encode_appellation()
         .getVins()
     )
-    assert "Appellation" not in out.columns
-    assert "Pauillac" in out.columns
-    assert int(out.loc[0, "Pauillac"]) == 1
+    assert "App_Appellation" not in out.columns
+    assert "App_Pauillac" in out.columns
+    assert int(out.loc[0, "App_Pauillac"]) == 1

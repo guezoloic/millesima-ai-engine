@@ -14,11 +14,11 @@ def path_filename(filename: str) -> str:
 class Cleaning:
     def __init__(self, filename) -> None:
         self._vins: DataFrame = read_csv(filename)
-        #
+        # créer la liste de tout les scores
         self.SCORE_COLS: list[str] = [
             c for c in self._vins.columns if c not in ["Appellation", "Prix"]
         ]
-        #
+        # transforme tout les colonnes score en numérique
         for col in self.SCORE_COLS:
             self._vins[col] = to_numeric(self._vins[col], errors="coerce")
 
@@ -87,7 +87,7 @@ class Cleaning:
         Remplace la colonne 'Appellation' par des colonnes indicatrices
         """
         appellations = self._vins[column].astype(str).str.strip()
-        appellation_dummies = get_dummies(appellations)
+        appellation_dummies = get_dummies(appellations, prefix="App")
         self._vins = self._vins.drop(columns=[column])
         self._vins = self._vins.join(appellation_dummies)
         return self
