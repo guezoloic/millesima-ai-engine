@@ -99,7 +99,11 @@ def main() -> None:
 
     filename = argv[1]
     cleaning: Cleaning = Cleaning(filename)
-    _ = cleaning.drop_empty_appellation().fill_missing_scores().encode_appellation()
+    cleaning.drop_empty_appellation()   \
+        .fill_missing_scores()          \
+        .encode_appellation()           \
+        .getVins()                      \
+        .to_csv("clean.csv", index=False)
 
 
 if __name__ == "__main__":
