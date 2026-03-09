@@ -1,4 +1,5 @@
 site_name: "Projet Millesima S6"
+site_url: "https://github.guezoloic.com/millesima-ai-engine/"
 
 theme:
   name: "material"
@@ -6,6 +7,11 @@ theme:
 plugins:
   - search
   - mkdocstrings
+
+extra:
+  generator: false
+
+copyright: "Loïc GUEZO & Chahrazad DAHMANI – UPEC S6 – 2026"
 
 markdown_extensions:
   - admonition

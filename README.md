@@ -3,9 +3,8 @@
 > A **University of Paris-Est Créteil (UPEC)** Semester 6 project.
 
 ## Documentation
-- 🇬🇧 [English Version](./docs/README_EN.md)
-- 🇫🇷 [Version Française](./docs/README_FR.md)
-
+- 🇫🇷 [Version Française](https://guezoloic.github.io/millesima-ai-engine)
+> note: only french version enabled for now.
 ---
 
 ## Installation
