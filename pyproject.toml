@@ -8,6 +8,10 @@ dependencies = [
     "tqdm==4.67.3",
 ]
 
+[tool.pytest.ini_options]
+pythonpath = "src"
+testpaths = ["tests"]
+
 [project.optional-dependencies]
 test = ["pytest==8.4.2", "requests-mock==1.12.1", "flake8==7.3.0"]
 doc = ["mkdocs<2.0.0", "mkdocs-material==9.6.23", "mkdocstrings[python]"]

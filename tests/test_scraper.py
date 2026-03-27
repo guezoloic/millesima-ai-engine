@@ -185,17 +185,11 @@ def mock_site():
                         {dumps({
                             "props": {
                                 "pageProps": {
-                                    "initialReduxState": {
-                                        "categ": {
-                                            "content": {
-                                                "products": [
-                                                    {"seoKeyword": "/nino-negri-5-stelle-sfursat-2022.html",},
-                                                    {"seoKeyword": "/poubelle",},
-                                                    {"seoKeyword": "/",}
-                                                ]
-                                            }
-                                        }
-                                    }
+                                    "products": [
+                                        {"seoKeyword": "/nino-negri-5-stelle-sfursat-2022.html",},
+                                        {"seoKeyword": "/poubelle",},
+                                        {"seoKeyword": "/",}
+                                    ]
                                 }
                             }
                         }
@@ -213,14 +207,8 @@ def mock_site():
                         {dumps({
                             "props": {
                                 "pageProps": {
-                                    "initialReduxState": {
-                                        "categ": {
-                                            "content": {
-                                                "products": [
-                                                ]
-                                            }
-                                        }
-                                    }
+                                    "products": [
+                                    ]
                                 }
                             }
                         }
