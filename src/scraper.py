@@ -377,12 +377,17 @@ class Scraper:
         try:
             data: dict[str, object] = self.getjsondata(subdir).getdata()
 
-            for element in ["initialReduxState", "categ", "content"]:
-                data = cast(dict[str, object], data.get(element))
+            # Changement dans la maniere du site stocke ses données.
+            #  
+            # for element in ["initialReduxState", "categ", "content"]:
+            #     data = cast(dict[str, object], data.get(element))
+            #     print(data)
 
             products: list[dict[str, Any]] = cast(
                 list[dict[str, Any]], data.get("products")
             )
+
+            print(products)
 
             return products
 
