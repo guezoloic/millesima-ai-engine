@@ -6,6 +6,7 @@ dependencies = [
     "beautifulsoup4==4.14.3",
     "pandas==2.3.3",
     "tqdm==4.67.3",
+    "scikit-learn==1.7.2"
 ]
 
 [tool.pytest.ini_options]

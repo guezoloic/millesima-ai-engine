@@ -92,18 +92,24 @@ class Cleaning:
         self._vins = self._vins.join(appellation_dummies)
         return self
 
+    def drop_empty_price(self) -> "Cleaning":
+        self._vins = self._vins.dropna(subset=["Prix"])
+        return self
+
 
 def main() -> None:
     if len(argv) != 2:
         raise ValueError(f"Usage: {argv[0]} <filename.csv>")
 
     filename = argv[1]
-    cleaning: Cleaning = Cleaning(filename)
-    cleaning.drop_empty_appellation()   \
-        .fill_missing_scores()          \
-        .encode_appellation()           \
-        .getVins()                      \
-        .to_csv("clean.csv", index=False)
+    cleaning: Cleaning = (
+        Cleaning(filename)
+        .drop_empty_appellation()
+        .fill_missing_scores()
+        .encode_appellation()
+        .drop_empty_price()
+    )
+    cleaning.getVins().to_csv("clean.csv", index=False)
 
 
 if __name__ == "__main__":
